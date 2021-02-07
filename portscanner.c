@@ -53,7 +53,7 @@ int main() {
    
     fd_set master;
     fd_set read_fds;
-    int fdmax = 65534; // one less than largest fd bc index 0
+    int fdmax = 4; // one less than largest fd bc index 0
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -61,8 +61,7 @@ int main() {
     // port scanner
     // for each port try client connection
     // print ports with server-client connection
-    int n = 65535;
-    for(int i = 1; i <= n; i++) {
+    for(int i = 1; i <= fdmax; i++) {
            int sockfd;
            int errnum;
            struct sockaddr_in servaddr;
@@ -77,7 +76,7 @@ int main() {
        	       errnum = errno;
                //printf("Socket init error: %d!!!", errnum);
                fprintf(stderr, "Error opening file: %s\n", strerror( errnum ));
-               goto out;
+               //goto out;
            }
 
            // add fd to master set
@@ -85,13 +84,43 @@ int main() {
 
            servaddr.sin_family = AF_INET;
            servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-           servaddr.sin_port = htons(port);
+           servaddr.sin_port = htons(i);
        
            //int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
            connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
        	   
     }
 
+    int optval;
+    int optlen;
+    char *optval2;
+    int errnum;
 
+    for (;;) {
+        // copy master
+        read_fds = master;
+        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
+	    perror("select");
+	    exit(4);
+	}
+        for(int i = 0; i < fdmax; i++) {
+		printf("i = %d\n", i);
+        	if (FD_ISSET(i, &read_fds)) {
+
+			if (getsockopt(i, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
+				
+			  	// remove i from master
+				//if(errno == )
+				errnum = errno;
+				fprintf(stderr, "getsockopt error: %s\n", strerror( errnum ));
+ 				
+			} else {
+				printf("i = %d, optval = %d\n", i, optval);
+			}
+		}
+
+        }
+	//break;
+    }
     return 0;
 }
