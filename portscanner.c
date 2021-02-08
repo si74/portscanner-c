@@ -53,7 +53,7 @@ int main() {
    
     fd_set master;
     fd_set read_fds;
-    int fdmax = 4; // one less than largest fd bc index 0
+    int fdmax = 80; // one less than largest fd bc index 0
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -61,13 +61,15 @@ int main() {
     // port scanner
     // for each port try client connection
     // print ports with server-client connection
-    for(int i = 1; i <= fdmax; i++) {
+    int fd_array[1];
+    for(int i = 80; i <= fdmax; i++) {
            int sockfd;
            int errnum;
            struct sockaddr_in servaddr;
        
-           sockfd = socket(AF_INET, SOCK_STREAM, 0); 
-       
+           sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	   printf("i: %d, sockfd: %d\n", i, sockfd); 
+           fd_array[i] = sockfd;
            // make socket non-blocking
            fcntl(sockfd, F_SETFL, O_NONBLOCK);
        
@@ -93,7 +95,6 @@ int main() {
 
     int optval;
     int optlen;
-    char *optval2;
     int errnum;
 
     for (;;) {
@@ -103,11 +104,12 @@ int main() {
 	    perror("select");
 	    exit(4);
 	}
-        for(int i = 0; i < fdmax; i++) {
-		printf("i = %d\n", i);
-        	if (FD_ISSET(i, &read_fds)) {
+        for(int i = 80; i <= fdmax; i++) {
+		//printf("iterating fd = %d\n", fd_array[i]);
+        	if (FD_ISSET(80 , &read_fds)) {
+                        //printf("fd = %d\n", fd_array[i]);
 
-			if (getsockopt(i, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
+			if (getsockopt(80, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
 				
 			  	// remove i from master
 				//if(errno == )
@@ -115,12 +117,11 @@ int main() {
 				fprintf(stderr, "getsockopt error: %s\n", strerror( errnum ));
  				
 			} else {
-				printf("i = %d, optval = %d\n", i, optval);
+				printf("fd = %d, optval = %d\n", 80, optval);
 			}
 		}
-
         }
-	//break;
+	break;
     }
     return 0;
 }
