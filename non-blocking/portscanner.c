@@ -34,15 +34,17 @@ int main() {
     // port scanner
     // for each port try client connection
     // print ports with server-client connection
-    int fd_array[1];
-    for(int i = 81; i <= fdmax; i++) {
+    int fd_array[fdmax+1];
+    for(int i = 80; i <= fdmax; i++) {
            int sockfd;
            int errnum;
            struct sockaddr_in servaddr;
 
+           printf("creating a port: %d\n", i);
+
            sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	   printf("trying to connect - port: %d, sockfd: %d\n", i, sockfd);
-           fd_array[0] = sockfd;
+
+           fd_array[i] = sockfd;
            // make socket non-blocking
            fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
@@ -51,8 +53,11 @@ int main() {
        	       errnum = errno;
                //printf("Socket init error: %d!!!", errnum);
                fprintf(stderr, "Error opening file: %s\n", strerror( errnum ));
+               continue;
                //goto out;
            }
+
+           printf("trying to connect - port: %d, sockfd: %d\n", i, sockfd);
 
            // add fd to master set
 	   FD_SET(sockfd, &master);
@@ -65,6 +70,9 @@ int main() {
            connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
     }
 
+    struct timeval tv;
+    tv.tv_sec = 2;
+    tv.tv_usec = 500000;
 
     for (;;) {
         // copy master
@@ -74,47 +82,50 @@ int main() {
                 break;
         }
 
-        if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
+        printf("checking if select\n");
+
+        if (select(fdmax, &read_fds, NULL, NULL, &tv) == -1) {
 	    perror("select");
 	    exit(4);
 	}
 
-        for(int i = 81; i <= fdmax; i++) {
+        for(int i = 80; i <= fdmax; i++) {
                 int optval;
                 socklen_t optlen;
                 int errnum;
 
-		//printf("iterating fd = %d\n", fd_array[i]);
-                printf("trying to check - port %d, fd %d\n", i, fd_array[0]);
-        	if (FD_ISSET(fd_array[0] , &read_fds)) {
-                        //printf("fd = %d\n", fd_array[i]);
-                        printf("isset - port %d, fd %d\n", i, fd_array[0]);
-			if (getsockopt(fd_array[0], SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
+                printf("trying to check - port %d, fd %d\n", i, fd_array[i]);
 
-			  	// remove i from master
-				//if(errno == )
+                // TODO: NOTE: this will hang with nc -l 80 for some reason. Why?
+        	if (FD_ISSET(fd_array[i] , &read_fds)) {
+
+                        printf("isset - port %d, fd %d\n", i, fd_array[i]);
+
+			if (getsockopt(fd_array[i], SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
 				errnum = errno;
 				fprintf(stderr, "getsockopt error: %s\n", strerror( errnum ));
-
 			} else {
-				printf("getsockopt succeeded - fd = %d, optval = %d, optlen = %d\n", 81, optval, optlen);
+				printf("getsockopt succeeded - port %d, fd = %d, optval = %d, optlen = %d\n", i, fd_array[i], optval, optlen);
                                 if (optval == EINPROGRESS) {
+                                        printf("it's in progress\n");
                                         continue;
                                 }
                                 if (optval == 0) {
-                                        printf("port is open: %d", i);
+                                        printf("port is open: %d\n", i);
                                 }
                                 // TODO: Figure out why optval sometimes isn't ECONNREFUSED
                                 if (optval == ECONNREFUSED) {
-                                        printf("connection refused. port is closed");
-                                        close(fd_array[0]);
+                                        printf("connection refused. port is closed\n");
                                 }
-                                FD_CLR(fd_array[0],&master);
-
+                                FD_CLR(fd_array[i],&master);
+                                close(fd_array[i]);
 			}
 
 		}
         }
     }
+
+    // TODO: signal handling of ctrl-c
+
     return 0;
 }
