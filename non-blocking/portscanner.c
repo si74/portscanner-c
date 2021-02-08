@@ -41,7 +41,7 @@ int main() {
            struct sockaddr_in servaddr;
 
            sockfd = socket(AF_INET, SOCK_STREAM, 0);
-	   printf("trying to connect i: %d, sockfd: %d\n", i, sockfd);
+	   printf("trying to connect - port: %d, sockfd: %d\n", i, sockfd);
            fd_array[0] = sockfd;
            // make socket non-blocking
            fcntl(sockfd, F_SETFL, O_NONBLOCK);
@@ -63,18 +63,13 @@ int main() {
 
            //int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
            connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
-
     }
 
-    int optval;
-    int optlen;
-    int errnum;
-    int totalcount = 0;
 
     for (;;) {
         // copy master
         read_fds = master;
-        printf("trying to select\n");
+
         if (FD_IS_ANY_SET(&master) == false) {
                 break;
         }
@@ -85,11 +80,15 @@ int main() {
 	}
 
         for(int i = 81; i <= fdmax; i++) {
+                int optval;
+                socklen_t optlen;
+                int errnum;
+
 		//printf("iterating fd = %d\n", fd_array[i]);
-                printf("trying to check: port %d, fd %d\n", i, fd_array[0]);
+                printf("trying to check - port %d, fd %d\n", i, fd_array[0]);
         	if (FD_ISSET(fd_array[0] , &read_fds)) {
                         //printf("fd = %d\n", fd_array[i]);
-                        printf("isset: port %d, fd %d\n", i, fd_array[0]);
+                        printf("isset - port %d, fd %d\n", i, fd_array[0]);
 			if (getsockopt(fd_array[0], SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
 
 			  	// remove i from master
@@ -98,18 +97,20 @@ int main() {
 				fprintf(stderr, "getsockopt error: %s\n", strerror( errnum ));
 
 			} else {
-				printf("getsockopt succeeded: fd = %d, optval = %d\n", 81, optval);
+				printf("getsockopt succeeded - fd = %d, optval = %d, optlen = %d\n", 81, optval, optlen);
                                 if (optval == EINPROGRESS) {
                                         continue;
                                 }
+                                if (optval == 0) {
+                                        printf("port is open: %d", i);
+                                }
+                                // TODO: Figure out why optval sometimes isn't ECONNREFUSED
                                 if (optval == ECONNREFUSED) {
                                         printf("connection refused. port is closed");
-                                        FD_CLR(fd_array[0],&master);
                                         close(fd_array[0]);
                                 }
-                                if (optval == 0) {
-                                        printf("port is open!");
-                                }
+                                FD_CLR(fd_array[0],&master);
+
 			}
 
 		}
