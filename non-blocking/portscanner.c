@@ -26,7 +26,7 @@ int main() {
 
     fd_set master;
     fd_set read_fds;
-    int fdmax = 81; // one less than largest fd bc index 0
+    int fdmax = 83; // one less than largest fd bc index 0
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
@@ -35,7 +35,7 @@ int main() {
     // for each port try client connection
     // print ports with server-client connection
     int fd_array[fdmax+1];
-    for(int i = 80; i <= fdmax; i++) {
+    for(int i = 1; i <= fdmax; i++) {
            int sockfd;
            int errnum;
            struct sockaddr_in servaddr;
@@ -71,32 +71,33 @@ int main() {
     }
 
     struct timeval tv;
-    tv.tv_sec = 2;
+    tv.tv_sec = 5;
     tv.tv_usec = 500000;
 
     for (;;) {
         // copy master
         read_fds = master;
 
-        if (FD_IS_ANY_SET(&master) == false) {
+        if (FD_IS_ANY_SET(&read_fds) == false) {
                 break;
         }
 
         printf("checking if select\n");
 
-        if (select(fdmax, &read_fds, NULL, NULL, &tv) == -1) {
+        if (select(fdmax+1, &read_fds, NULL, NULL, &tv) == -1) {
 	    perror("select");
 	    exit(4);
 	}
 
-        for(int i = 80; i <= fdmax; i++) {
+        for(int i = 1; i <= fdmax; i++) {
                 int optval;
                 socklen_t optlen;
                 int errnum;
 
                 printf("trying to check - port %d, fd %d\n", i, fd_array[i]);
 
-                // TODO: NOTE: this will hang with nc -l 80 for some reason. Why?
+                // TODO: NOTE: this will hang with nc -l 80 for some reason. Why? (or with python3 -m http.server)
+                // The last two  file descriptors are never ready and never removed from the set
         	if (FD_ISSET(fd_array[i] , &read_fds)) {
 
                         printf("isset - port %d, fd %d\n", i, fd_array[i]);
@@ -121,8 +122,10 @@ int main() {
                                 close(fd_array[i]);
 			}
 
-		}
+                }
+
         }
+        break;
     }
 
     // TODO: signal handling of ctrl-c
