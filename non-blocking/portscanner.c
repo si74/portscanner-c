@@ -26,7 +26,7 @@ int main() {
 
     fd_set master;
     fd_set read_fds;
-    int fdmax = 83; // one less than largest fd bc index 0
+    int fdmax = 10; // one less than largest fd bc index 0
 
     FD_ZERO(&master);
     FD_ZERO(&read_fds);
