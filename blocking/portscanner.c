@@ -1,4 +1,5 @@
-#include <sys/types.h>          
+// Blocking port scanner
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
 #include <netdb.h>
@@ -14,7 +15,7 @@ void client(int port) {
     int errnum;
     struct sockaddr_in servaddr;
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); 
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
     // int socket(int domain, int type, int protocol);
     if(sockfd == -1) {
 	errnum = errno;
@@ -29,6 +30,9 @@ void client(int port) {
 
     //int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
     if(connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
+        errnum = errno;
+        printf("error opening port %d\n", port);
+        perror("connect");
         goto out;
     } else {
         printf("open port %d\n", port);
@@ -39,10 +43,9 @@ out:
 }
 
 // TODO reuse sockfd
-// TODO add concurrency, ncat listen, while running portscanner 
-
+// TODO add concurrency, ncat listen, while running portscanner
 int main() {
-    
+
     // port scanner
     // for each port try client connection
     // print ports with server-client connection

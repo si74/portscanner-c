@@ -1,3 +1,4 @@
+// Non-blocking port scanner
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <errno.h>
@@ -24,7 +25,7 @@ int main() {
    int ports[2] = {1,2};
    int len = 2;
    int fd_array[2];
-   /* 
+   /*
     * For some reason SOCKSTREAM | O_NONBLOCK doesn't work
     * despite what the man page says (https://man7.org/linux/man-pages/man2/socket.2.html).
     * Hence, using fcntl() instead.
@@ -52,7 +53,7 @@ int main() {
          errnum = errno;
          /* check type of error - i.e. in progress and continue if that is the case */
          if (errno == EINPROGRESS) {
-            printf("operation still in progress. continuing...");
+            printf("operation still in progress to port: %d. continuing...\n", ports[i]);
          } else {
             perror("connect failed\n");
             return 1;
@@ -67,12 +68,12 @@ int main() {
    }
 
    int counter = 0;
-   
+
    /* check  */
    for (;;) {
       counter++;
       /* copy master set */
-      writefds = master; 
+      writefds = master;
       if (select(fd_max+1, NULL, &writefds, NULL, NULL) == -1) {
          errnum = errno;
          perror("listen");
@@ -102,7 +103,7 @@ int main() {
                close(fd_array[i]);
             }
          }
-         
+
       }
    }
 
@@ -110,6 +111,5 @@ int main() {
    close(fd_array[0]);
    close(fd_array[1]);
    return 0;
- 
-}
 
+}
