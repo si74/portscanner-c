@@ -1,7 +1,7 @@
 all:
-	gcc nonblocking/portscanner.c -o portscanner
-	gcc blocking/portscanner.c -o portscanner
+	gcc nonblocking/portscanner.c -o nonblock
+	gcc blocking/portscanner.c -o block
 
 clean:
-	rm client
-	rm portscanner
+	rm nonblock
+	rm block

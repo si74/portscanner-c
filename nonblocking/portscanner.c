@@ -21,6 +21,7 @@ int main() {
    struct sockaddr_in server;
    char server_reply[2000];
    fd_set master, writefds, readfds;
+   struct sockaddr_in peeraddr;
 
    int ports[2] = {1,2};
    int len = 2;
@@ -52,7 +53,7 @@ int main() {
       if (connect (sock, (struct sockaddr*)&server, sizeof(server)) < 0) {
          errnum = errno;
          /* check type of error - i.e. in progress and continue if that is the case */
-         if (errno == EINPROGRESS) {
+         if (errnum == EINPROGRESS) {
             printf("operation still in progress to port: %d. continuing...\n", ports[i]);
          } else {
             perror("connect failed\n");
@@ -65,13 +66,20 @@ int main() {
       FD_SET(sock, &master);
       fd_max = sock;
 
+      printf("did we get here");
    }
+
+   printf("exited this loop");
 
    int counter = 0;
 
+   printf("we are entering this");
+
    /* check  */
    for (;;) {
+      printf("iteration %d:", counter);
       counter++;
+
       /* copy master set */
       writefds = master;
       if (select(fd_max+1, NULL, &writefds, NULL, NULL) == -1) {
@@ -80,30 +88,47 @@ int main() {
          fprintf(stderr, "errno: %s\n", strerror(errnum));
          exit(4);
       }
+
       for (int i = 0; i < len; i++) {
          if (FD_ISSET(fd_array[i], &writefds)) {
-            /* check if socket has error */
-            if (getsockopt(fd_array[i], SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
-				   errnum = errno;
-				   fprintf(stderr, "getsockopt error: %s\n", strerror( errnum ));
-			   } else {
-				   printf("getsockopt succeeded - port %d, fd = %d, optval = %d, optlen = %d\n", i, fd_array[i], optval, optlen);
-               if (optval == EINPROGRESS) {
-                  printf("it's in progress\n");
-                  continue;
-               }
-               if (optval == 0) {
-                  printf("port is open: %d\n", i);
-               }
-               // TODO: Figure out why optval sometimes isn't ECONNREFUSED
-               if (optval == ECONNREFUSED) {
-                  printf("connection refused. port is closed\n");
-               }
-               FD_CLR(fd_array[i],&master);
-               close(fd_array[i]);
+            /* check if socket is open or not */
+            socklen_t peeraddr_len = sizeof(peeraddr);
+            if (getpeername(fd_array[i], (struct sockaddr *)&peeraddr, sizeof(&peeraddr_len)) < 0){
+                errnum = errno;
+                //printf("connection failed to port %d", errnum);
+                if (errnum == EINVAL) {
+                   printf("socket shut down");
+                   perror("connection failed b/c error");
+                }
+                if (errnum == EFAULT) {
+                   printf("bad memory space");
+                   perror("connection failed b/c bad memory");
+                }
+                perror("connection failed");
+                FD_CLR(fd_array[i],&master);
+                close(fd_array[i]);
             }
-         }
 
+            // if (getsockopt(fd_array[i], SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
+		// 		   errnum = errno;
+		// 		   fprintf(stderr, "getsockopt error: %s\n", strerror( errnum ));
+		// 	   } else {
+		// 		   printf("getsockopt succeeded - port %d, fd = %d, optval = %d, optlen = %d\n", i, fd_array[i], optval, optlen);
+            //    if (optval == EINPROGRESS) {
+            //       printf("it's in progress\n");
+            //       continue;
+            //    }
+            //    if (optval == 0) {
+            //       printf("port is open: %d\n", i);
+            //    }
+            //    // TODO: Figure out why optval sometimes isn't ECONNREFUSED
+            //    if (optval == ECONNREFUSED) {
+            //       printf("connection refused. port is closed\n");
+            //    }
+            //    FD_CLR(fd_array[i],&master);
+            //    close(fd_array[i]);
+            // }
+         }
       }
    }
 
